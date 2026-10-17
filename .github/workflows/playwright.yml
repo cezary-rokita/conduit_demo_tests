@@ -17,13 +17,20 @@ jobs:
         run: npm ci
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
-      - name: Start Practice Software Testing (SUT) from README instructions
+      - name: Start Practice Software Testing (SUT)
         run: |
           git clone --depth 1 https://github.com/testsmith-io/practice-software-testing.git /tmp/pst
           cd /tmp/pst
           docker compose up -d --build
+          
+          # Wait for the composer container to finish installing PHP packages and exit
+          docker wait pst-composer-1
+          
+          # Wait for UI and API web server to come online
           npx wait-on http://localhost:8091/status http://localhost:4200 -t 180000
-          docker compose exec -T laravel-api php artisan migrate:fresh --seed
+          
+          # Run your exact command (without -t since CI has no TTY)
+          docker exec -i pst-laravel-api-1 php artisan migrate:fresh --seed
 
       - name: Run Playwright tests
         run: npx playwright test
