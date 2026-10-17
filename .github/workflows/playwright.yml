@@ -19,6 +19,12 @@ jobs:
         run: npx playwright install --with-deps
       - name: Run Playwright tests
         run: npx playwright test
+        env:
+          BASE_URL: https://practicesoftwaretesting.com
+          API_URL: https://api.practicesoftwaretesting.com
+          STORAGE_STATE: .auth/customer.json
+          TEST_USER_EMAIL: customer@practicesoftwaretesting.com
+          TEST_USER_PASSWORD: welcome01
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:

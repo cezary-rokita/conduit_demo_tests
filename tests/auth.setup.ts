@@ -1,10 +1,11 @@
 import { test as setup, expect } from "@playwright/test";
 
 setup("Log in and save browser state", async ({ page }) => {
-  const apiUrl = process.env.API_URL;
+  const apiUrl =
+    process.env.API_URL || "https://api.practicesoftwaretesting.com";
   const email = process.env.TEST_USER_EMAIL;
   const password = process.env.TEST_USER_PASSWORD;
-  const storageState = process.env.STORAGE_STATE;
+  const storageState = process.env.STORAGE_STATE || ".auth/customer.json";
 
   if (!apiUrl || !email || !password || !storageState) {
     throw new Error(
