@@ -13,7 +13,7 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 5000 },
   use: {
-    baseURL: process.env.BASE_URL || "https://conduit.bondaracademy.com",
+    baseURL: process.env.BASE_URL || "https://practicesoftwaretesting.com/",
     testIdAttribute: "data-testid",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
@@ -22,18 +22,34 @@ export default defineConfig({
 
   projects: [
     {
+      name: "setup",
+      testMatch: "**/*.setup.ts",
+    },
+    {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: process.env.STORAGE_STATE,
+      },
+      dependencies: ["setup"],
     },
 
     {
       name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
+      use: {
+        ...devices["Desktop Firefox"],
+        storageState: process.env.STORAGE_STATE,
+      },
+      dependencies: ["setup"],
     },
 
     {
       name: "webkit",
-      use: { ...devices["Desktop Safari"] },
+      use: {
+        ...devices["Desktop Safari"],
+        storageState: process.env.STORAGE_STATE,
+      },
+      dependencies: ["setup"],
     },
   ],
 });
