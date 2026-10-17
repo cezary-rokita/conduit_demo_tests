@@ -8,6 +8,9 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    env:
+      SPRINT: sprint5
+      DISABLE_LOGGING: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,17 +24,40 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/testsmith-io/practice-software-testing.git /tmp/pst
           cd /tmp/pst
-          docker compose up -d --build
-          
-          # Wait for the composer container to finish installing PHP packages and exit
-          docker wait pst-composer-1
-          
-          # Wait for UI and API web server to come online
-          npx wait-on http://localhost:8091/status http://localhost:4200 -t 180000
-          
-          # Run your exact command (without -t since CI has no TTY)
-          docker exec -i pst-laravel-api-1 php artisan migrate:fresh --seed
-
+          docker compose -f docker-compose.yml up -d --force-recreate
+          sleep 30
+          docker compose exec -T -u root laravel-api composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-ffi
+      - name: Wait for database and migrate
+        working-directory: /tmp/pst
+        run: |
+          echo "Waiting for MariaDB..."
+          for i in $(seq 1 30); do
+            if docker compose exec -T mariadb mysqladmin ping -h localhost -u root -proot --silent 2>/dev/null; then
+              echo "MariaDB is ready"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "MariaDB did not become ready"
+              exit 1
+            fi
+            sleep 2
+          done
+          docker compose exec -T laravel-api php artisan migrate:refresh --seed --force
+          docker compose exec -T laravel-api php artisan migrate:status
+      - name: Verify API is ready
+        run: npx wait-on http://localhost:8091/status http://localhost:4200 -t 180000
+      - name: Verify seeded customer can log in
+        run: |
+          status=$(curl --silent --show-error --output /tmp/login-response.json --write-out "%{http_code}" \
+            --header "Content-Type: application/json" \
+            --data '{"email":"customer@practicesoftwaretesting.com","password":"welcome01"}' \
+            http://localhost:8091/users/login)
+          if [ "$status" != "200" ]; then
+            echo "Seeded customer login returned HTTP $status"
+            cat /tmp/login-response.json
+            exit 1
+          fi
+          echo "Seeded customer login succeeded"
       - name: Run Playwright tests
         run: npx playwright test
         env:
