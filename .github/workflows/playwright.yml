@@ -8,6 +8,9 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    env:
+      SPRINT: sprint5
+      DISABLE_LOGGING: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,8 +20,60 @@ jobs:
         run: npm ci
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
+      - name: Start Practice Software Testing (SUT)
+        run: |
+          git clone --depth 1 https://github.com/testsmith-io/practice-software-testing.git /tmp/pst
+          cd /tmp/pst
+          docker compose -f docker-compose.yml up -d --force-recreate
+          sleep 30
+          docker compose exec -T -u root laravel-api composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-ffi
+      - name: Wait for database and migrate
+        working-directory: /tmp/pst
+        run: |
+          echo "Waiting for MariaDB..."
+          for i in $(seq 1 30); do
+            if docker compose exec -T mariadb mysqladmin ping -h localhost -u root -proot --silent 2>/dev/null; then
+              echo "MariaDB is ready"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "MariaDB did not become ready"
+              exit 1
+            fi
+            sleep 2
+          done
+          docker compose exec -T laravel-api php artisan migrate:refresh --seed --force
+          docker compose exec -T laravel-api php artisan migrate:status
+      - name: Verify API is ready
+        run: npx wait-on http://localhost:8091/status http://localhost:4200 -t 180000
+      - name: Verify seeded customer can log in
+        run: |
+          status=$(curl --silent --show-error --output /tmp/login-response.json --write-out "%{http_code}" \
+            --header "Content-Type: application/json" \
+            --data '{"email":"customer@practicesoftwaretesting.com","password":"welcome01"}' \
+            http://localhost:8091/users/login)
+          if [ "$status" != "200" ]; then
+            echo "Seeded customer login returned HTTP $status"
+            cat /tmp/login-response.json
+            exit 1
+          fi
+          echo "Seeded customer login succeeded"
       - name: Run Playwright tests
         run: npx playwright test
+        env:
+          BASE_URL: http://localhost:4200
+          API_URL: http://localhost:8091
+          STORAGE_STATE: .auth/customer.json
+          TEST_USER_EMAIL: customer@practicesoftwaretesting.com
+          TEST_USER_PASSWORD: welcome01
+
+      - name: Dump app logs on failure
+        if: ${{ failure() }}
+        working-directory: /tmp/pst
+        run: |
+          docker compose logs --no-color --tail=200 laravel-api web mariadb
+          docker exec pst-laravel-api-1 sh -lc 'if [ -f storage/logs/laravel.log ]; then tail -n 200 storage/logs/laravel.log; else echo "No Laravel log file"; fi'
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
