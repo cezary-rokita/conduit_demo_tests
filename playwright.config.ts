@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
 
 dotenv.config();
+const storageState = process.env.STORAGE_STATE || ".auth/customer.json";
 
 export default defineConfig({
   testDir: "./tests",
@@ -29,7 +30,7 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: process.env.STORAGE_STATE,
+        storageState: storageState,
       },
       dependencies: ["setup"],
     },
