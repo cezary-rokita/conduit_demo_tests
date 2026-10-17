@@ -17,14 +17,24 @@ jobs:
         run: npm ci
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
+      - name: Start Practice Software Testing (SUT) from README instructions
+        run: |
+          git clone --depth 1 https://github.com/testsmith-io/practice-software-testing.git /tmp/pst
+          cd /tmp/pst
+          cp .env.example .env
+          docker compose up -d --build
+          npx wait-on http://localhost:8091/status http://localhost:4200 -t 180000
+          docker compose exec -T laravel-api php artisan migrate:fresh --seed
+
       - name: Run Playwright tests
         run: npx playwright test
         env:
-          BASE_URL: https://practicesoftwaretesting.com
-          API_URL: https://api.practicesoftwaretesting.com
+          BASE_URL: http://localhost:4200
+          API_URL: http://localhost:8091
           STORAGE_STATE: .auth/customer.json
           TEST_USER_EMAIL: customer@practicesoftwaretesting.com
           TEST_USER_PASSWORD: welcome01
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
