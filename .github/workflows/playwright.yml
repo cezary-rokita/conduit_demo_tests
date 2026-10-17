@@ -41,6 +41,13 @@ jobs:
           TEST_USER_EMAIL: customer@practicesoftwaretesting.com
           TEST_USER_PASSWORD: welcome01
 
+      - name: Dump app logs on failure
+        if: ${{ failure() }}
+        working-directory: /tmp/pst
+        run: |
+          docker compose logs --no-color --tail=200 laravel-api web mariadb
+          docker exec pst-laravel-api-1 sh -lc 'if [ -f storage/logs/laravel.log ]; then tail -n 200 storage/logs/laravel.log; else echo "No Laravel log file"; fi'
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
