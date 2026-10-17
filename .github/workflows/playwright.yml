@@ -21,7 +21,6 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/testsmith-io/practice-software-testing.git /tmp/pst
           cd /tmp/pst
-          cp .env.example .env
           docker compose up -d --build
           npx wait-on http://localhost:8091/status http://localhost:4200 -t 180000
           docker compose exec -T laravel-api php artisan migrate:fresh --seed
