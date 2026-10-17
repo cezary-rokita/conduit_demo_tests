@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
 
 dotenv.config();
-const storageState = process.env.STORAGE_STATE || ".auth/customer.json";
+const storageState = process.env.STORAGE_STATE || ".auth/user-session.json";
 
 export default defineConfig({
   testDir: "./tests",
@@ -39,7 +39,7 @@ export default defineConfig({
       name: "firefox",
       use: {
         ...devices["Desktop Firefox"],
-        storageState: process.env.STORAGE_STATE,
+        storageState: storageState,
       },
       dependencies: ["setup"],
     },
@@ -48,7 +48,7 @@ export default defineConfig({
       name: "webkit",
       use: {
         ...devices["Desktop Safari"],
-        storageState: process.env.STORAGE_STATE,
+        storageState: storageState,
       },
       dependencies: ["setup"],
     },
